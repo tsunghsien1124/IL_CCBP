@@ -77,65 +77,65 @@ PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, γ))")
 # println("Given (μ_0, μ_0^c, ω_1, ω_2) = ($μ_0, $μ_0_c, $ω_1, $ω_2)")
 # println("Find the minimum of $(objective_value(model)) at (x_1,x_2) = ($(value(x_1)), $(value(x_2)))")
 
-#======================#
-# benchmark result - ν #
-#======================#
-ν_1_grid = collect(0.0:0.05:2.0)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.05:2.0)
-ν_2_size = length(ν_1_grid)
-ν_res = zeros(ν_1_size * ν_2_size, 8)
-ν_res_obj = zeros(ν_1_size, ν_2_size)
-ν_res_i = 1
-for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-    # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-    model = Model(Ipopt.Optimizer)
-    set_silent(model)
-    set_attribute(model, "tol", ϵ_tol)
-    @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-    @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-    @constraint(model, c1, x_1 + x_2 >= 1.0)
-    _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-    @objective(model, Min, _obj_CB(x_1, x_2))
-    optimize!(model)
-    # save results
-    ν_res[ν_res_i, 1] = ν_1_grid[ν_1_i]
-    ν_res[ν_res_i, 2] = ν_2_grid[ν_2_i]
-    ν_res[ν_res_i, 3] = objective_value(model)
-    ν_res_obj[ν_1_i, ν_2_i] = objective_value(model)
-    ν_res[ν_res_i, 4] = value(x_1)
-    ν_res[ν_res_i, 5] = value(x_2)
-    ν_res[ν_res_i, 6] = μ_1(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-    ν_res[ν_res_i, 7] = μ_2(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-    ν_res[ν_res_i, 8] = 1.0 - δ * c(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-    ν_res_i += 1
-end
+# #======================#
+# # benchmark result - ν #
+# #======================#
+# ν_1_grid = collect(0.0:0.05:2.0)
+# ν_1_size = length(ν_1_grid)
+# ν_2_grid = collect(0.0:0.05:2.0)
+# ν_2_size = length(ν_1_grid)
+# ν_res = zeros(ν_1_size * ν_2_size, 8)
+# ν_res_obj = zeros(ν_1_size, ν_2_size)
+# ν_res_i = 1
+# for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
+#     # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
+#     model = Model(Ipopt.Optimizer)
+#     set_silent(model)
+#     set_attribute(model, "tol", ϵ_tol)
+#     @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
+#     @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
+#     @constraint(model, c1, x_1 + x_2 >= 1.0)
+#     _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
+#     @objective(model, Min, _obj_CB(x_1, x_2))
+#     optimize!(model)
+#     # save results
+#     ν_res[ν_res_i, 1] = ν_1_grid[ν_1_i]
+#     ν_res[ν_res_i, 2] = ν_2_grid[ν_2_i]
+#     ν_res[ν_res_i, 3] = objective_value(model)
+#     ν_res_obj[ν_1_i, ν_2_i] = objective_value(model)
+#     ν_res[ν_res_i, 4] = value(x_1)
+#     ν_res[ν_res_i, 5] = value(x_2)
+#     ν_res[ν_res_i, 6] = μ_1(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
+#     ν_res[ν_res_i, 7] = μ_2(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
+#     ν_res[ν_res_i, 8] = 1.0 - δ * c(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
+#     ν_res_i += 1
+# end
 
-# rounding numbers
-ν_res = round.(ν_res, digits=4)
+# # rounding numbers
+# ν_res = round.(ν_res, digits=4)
 
-# minimizer and minimum
-ν_min_i = argmin(ν_res[:, 3])
-ν_min = ν_res[ν_min_i, :]
+# # minimizer and minimum
+# ν_min_i = argmin(ν_res[:, 3])
+# ν_min = ν_res[ν_min_i, :]
 
-# heatmap
-fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\nu_1$", ylabel=L"$\nu_2$")
-hm = heatmap!(ax, ν_1_grid, ν_2_grid, ν_res_obj, colormap=(:viridis,0.8))
-scatter!(ax, (ν_res[ν_min_i, 1], ν_res[ν_min_i, 2]), color=:red, strokecolor=:red, strokewidth=5)
-Colorbar(fig[:, end+1], hm)
-fig
+# # heatmap
+# fig = Figure(fontsize=32, size=(600, 500))
+# ax = Axis(fig[1, 1], xlabel=L"$\nu_1$", ylabel=L"$\nu_2$")
+# hm = heatmap!(ax, ν_1_grid, ν_2_grid, ν_res_obj, colormap=(:viridis,0.8))
+# scatter!(ax, (ν_res[ν_min_i, 1], ν_res[ν_min_i, 2]), color=:red, strokecolor=:red, strokewidth=5)
+# Colorbar(fig[:, end+1], hm)
+# fig
 
-# save figures
-filename = "fig_optimal_ν" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
-filename = "fig_optimal_ν" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
+# # save figures
+# filename = "fig_optimal_ν" * ".pdf"
+# save(PATH_FIG_γ * "\\" * filename, fig)
+# filename = "fig_optimal_ν" * ".png"
+# save(PATH_FIG_γ * "\\" * filename, fig)
 
 #==============================#
 # benchmark result - ν and μ_0 #
 #==============================#
-μ_0_grid = collect(0.01:0.01:0.99)
+μ_0_grid = collect(0.05:0.05:0.95)
 μ_0_size = length(μ_0_grid)
 ν_1_grid = collect(0.0:0.05:2.0)
 ν_1_size = length(ν_1_grid)
@@ -145,28 +145,28 @@ save(PATH_FIG_γ * "\\" * filename, fig)
 ν_res_obj = zeros(μ_0_size, ν_1_size, ν_2_size)
 for μ_0_i = 1:μ_0_size
     ν_res_i = 1
-    for ν_1_i = 1:μ_0_size, ν_2_i = 1:ν_2_size
-    # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-    model = Model(Ipopt.Optimizer)
-    set_silent(model)
-    set_attribute(model, "tol", ϵ_tol)
-    @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-    @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-    @constraint(model, c1, x_1 + x_2 >= 1.0)
-    _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-    @objective(model, Min, _obj_CB(x_1, x_2))
-    optimize!(model)
-    # save results
-    ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-    ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-    ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
-    ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
-    ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
-    ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
-    ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-    ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-    ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-    ν_res_i += 1
+    for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
+        # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
+        model = Model(Ipopt.Optimizer)
+        set_silent(model)
+        set_attribute(model, "tol", ϵ_tol)
+        @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
+        @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
+        @constraint(model, c1, x_1 + x_2 >= 1.0)
+        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
+        @objective(model, Min, _obj_CB(x_1, x_2))
+        optimize!(model)
+        # save results
+        ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
+        ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
+        ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
+        ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
+        ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
+        ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
+        ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+        ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+        ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+        ν_res_i += 1
     end
 end
 
@@ -174,21 +174,21 @@ end
 ν_res = round.(ν_res, digits=4)
 
 # minimizer and minimum
-ν_min_i = argmin(ν_res[:, 3])
-ν_min = ν_res[ν_min_i, :]
+ν_min_i = vec(getindex.(argmin(ν_res[:,:,3], dims=2), 2))
+ν_1_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 1] for μ_0_i = 1:μ_0_size]
+ν_2_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 2] for μ_0_i = 1:μ_0_size]
 
-# heatmap
+# line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\nu_1$", ylabel=L"$\nu_2$")
-hm = heatmap!(ax, ν_1_grid, ν_2_grid, ν_res_obj, colormap=(:viridis,0.8))
-scatter!(ax, (ν_res[ν_min_i, 1], ν_res[ν_min_i, 2]), color=:red, strokecolor=:red, strokewidth=5)
-Colorbar(fig[:, end+1], hm)
+ax = Axis(fig[1, 1], xlabel=L"$\mu_0$", ylabel=L"$\nu$")
+lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
 fig
 
 # save figures
-filename = "fig_optimal_ν" * ".pdf"
+filename = "fig_optimal_ν_μ_0" * ".pdf"
 save(PATH_FIG_γ * "\\" * filename, fig)
-filename = "fig_optimal_ν" * ".png"
+filename = "fig_optimal_ν_μ_0" * ".png"
 save(PATH_FIG_γ * "\\" * filename, fig)
 
 #=
