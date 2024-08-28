@@ -1,8 +1,10 @@
 #=================#
 # Import packages #
 #=================#
+using Parameters
 using JuMP
 import Ipopt
+using ProgressMeter
 using PrettyTables
 using GLMakie
 using CairoMakie
@@ -38,44 +40,53 @@ obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = δ * 
 obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * μ_0_c * (x_1 * (ω_1 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0 + (1.0 - x_1) * (ω_1 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0)
 obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * (1.0 - μ_0_c) * ((1.0 - x_2) * (ω_2 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0 + x_2 * (ω_2 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0)
 obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α) = α * (μ_0_c * (x_r(1, x_T, ν_1, ν_2) - x_T)^2 + (1.0 - μ_0_c) * (x_r(2, x_T, ν_1, ν_2) - x_T)^2)
-obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
+# obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
+obj_CB(x_1, x_2, para) =
+    obj_CB_μ_0(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    obj_CB_1(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    obj_CB_2(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    obj_CB_x(para["μ_0_c"], para["x_T"], para["ν_1"], para["ν_2"], para["α"])
+obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1", "ν_2", "α"]
 
 #======================#
 # benchmark parameters #
 #======================#
-δ = 0.5
-ω_1 = 1.0
-ω_2 = -1.0
-μ_0 = 0.5
-μ_0_diff = 0.0
-μ_0_c = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-γ = 10.0
-x_T = 2.0
-# ν_1 = 1.0
-# ν_2 = ν_1
-α = 1.0
-ϵ_x = 1E-6
-ϵ_tol = 1E-8
+@with_kw struct Benchmark_Parameters
+    δ::Float64 = 1.0
+    ω_1::Float64 = 2.0
+    ω_2::Float64 = -2.0
+    μ_0::Float64 = 0.5
+    μ_0_diff::Float64 = 0.0
+    μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
+    γ::Float64 = 1.0
+    x_T::Float64 = 2.0
+    ν_1::Float64 = 1.0
+    ν_2::Float64 = 1.0
+    α::Float64 = 1.0
+    ϵ_x::Float64 = 1E-6
+    ϵ_tol::Float64 = 1E-8
+end
+BP = Benchmark_Parameters()
 
 #=========================#
 # creating result folders #
 #=========================#
-PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, γ))")
+PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, BP.γ))")
 
 #==================#
 # benchmark result #
 #==================#
-# model = Model(Ipopt.Optimizer)
-# set_silent(model)
-# set_attribute(model, "tol", ϵ_tol)
-# @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-# @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-# @constraint(model, c1, x_1 + x_2 >= 1.0)
-# _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2)
-# @objective(model, Min, _obj_CB(x_1, x_2))
-# optimize!(model)
-# println("Given (μ_0, μ_0^c, ω_1, ω_2) = ($μ_0, $μ_0_c, $ω_1, $ω_2)")
-# println("Find the minimum of $(objective_value(model)) at (x_1,x_2) = ($(value(x_1)), $(value(x_2)))")
+obj_CB_para = Dict([("μ_0", BP.μ_0), ("μ_0_c", BP.μ_0_c), ("ω_1", BP.ω_1), ("ω_2", BP.ω_2), ("δ", BP.δ), ("γ", BP.γ), ("x_T", BP.x_T), ("ν_1", BP.ν_1), ("ν_2", BP.ν_2), ("α", BP.α)])
+model = Model(Ipopt.Optimizer)
+set_silent(model)
+set_attribute(model, "tol", BP.ϵ_tol)
+@variable(model, BP.ϵ_x <= x_1 <= (1.0 - BP.ϵ_x), start = 0.5)
+@variable(model, BP.ϵ_x <= x_2 <= (1.0 - BP.ϵ_x), start = 0.5)
+@constraint(model, c1, x_1 + x_2 >= 1.0)
+_obj_CB(x_1, x_2) = obj_CB(x_1, x_2, obj_CB_para)
+@objective(model, Min, _obj_CB(x_1, x_2))
+optimize!(model)
+println("Find the minimum of $(objective_value(model)) at (x_1,x_2) = ($(value(x_1)), $(value(x_2)))")
 
 # #======================#
 # # benchmark result - ν #
@@ -132,58 +143,85 @@ PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, γ))")
 # filename = "fig_optimal_ν" * ".png"
 # save(PATH_FIG_γ * "\\" * filename, fig)
 
-#==============================#
-# benchmark result - ν and μ_0 #
-#==============================#
-μ_0_grid = collect(0.1:0.1:0.90)
-μ_0_size = length(μ_0_grid)
-ν_1_grid = collect(0.0:0.1:2.0)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.1:2.0)
-ν_2_size = length(ν_1_grid)
-ν_res = zeros(μ_0_size, ν_1_size * ν_2_size, 8)
-ν_res_obj = zeros(μ_0_size, ν_1_size, ν_2_size)
-for μ_0_i = 1:μ_0_size
-    ν_res_i = 1
-    for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-        # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
+function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,4},
+    TA::String, TA_size::Int64, TA_grid::Vector{Float64},
+    ν_1_size::Int64, ν_1_grid::Vector{Float64}, ν_2_size::Int64, ν_2_grid::Vector{Float64})
+
+    # unpack benchmark parameters
+    @unpack μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α, ϵ_x, ϵ_tol = BP
+
+    # create the iterator indices for multi-threading
+    ind_nested_loop = collect(Iterators.product(1:ν_2_size, 1:ν_1_size, 1:TA_size))
+
+    # timer
+    pp = Progress(ν_2_size * ν_1_size * TA_size)
+    update!(pp, 0)
+    jj = Threads.Atomic{Int}(0)
+    ll = Threads.SpinLock()
+
+    Threads.@threads for (ν_2_i, ν_1_i, TA_i) in ind_nested_loop
+
+        # create the parameter dictionary
+        obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α)])
+        obj_CB_para[TA] = TA_grid[TA_i]
+        obj_CB_para["ν_1"] = ν_1_grid[ν_1_i]
+        obj_CB_para["ν_2"] = ν_2_grid[ν_2_i]
+
+        # slove CB's optimization problem for (x_1, x_2)
         model = Model(Ipopt.Optimizer)
         set_silent(model)
         set_attribute(model, "tol", ϵ_tol)
         @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
         @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
         @constraint(model, c1, x_1 + x_2 >= 1.0)
-        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
+        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, obj_CB_para)
         @objective(model, Min, _obj_CB(x_1, x_2))
         optimize!(model)
+
         # save results
-        ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-        ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-        ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
-        ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
-        ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
-        ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
-        ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res_i += 1
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 1] = ν_1_grid[ν_1_i]
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 2] = ν_2_grid[ν_2_i]
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 3] = objective_value(model)
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 4] = value(x_1)
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 5] = value(x_2)
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 6] = μ_1(value(x_1), value(x_2), obj_CB_para["μ_0"])
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 7] = μ_2(value(x_1), value(x_2), obj_CB_para["μ_0"])
+        @inbounds res[TA_i, ν_1_i, ν_2_i, 8] = 1.0 - obj_CB_para["δ"] * c(value(x_1), value(x_2), obj_CB_para["μ_0"])
+
+        # update timer
+        Threads.atomic_add!(jj, 1)
+        Threads.lock(ll)
+        update!(pp, jj[])
+        Threads.unlock(ll)  
     end
+    return nothing
 end
 
-# rounding numbers
-ν_res = round.(ν_res, digits=4)
+#==============================#
+# benchmark result - ν and μ_0 #
+#==============================#
+μ_0_grid = collect(0.05:0.05:0.95)
+μ_0_size = length(μ_0_grid)
+ν_1_grid = collect(0.00:0.005:0.10)
+ν_1_size = length(ν_1_grid)
+ν_2_grid = collect(0.00:0.005:0.10)
+ν_2_size = length(ν_2_grid)
+res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
+optimal_flexibility_func!(BP, res, "μ_0", μ_0_size, μ_0_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
 
 # minimizer and minimum
-ν_min_i = vec(getindex.(argmin(ν_res[:,:,3], dims=2), 2))
-ν_1_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 1] for μ_0_i = 1:μ_0_size]
-ν_2_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 2] for μ_0_i = 1:μ_0_size]
+res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2,3))
+ν_1_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 1] for μ_0_i = 1:μ_0_size]
+ν_2_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 2] for μ_0_i = 1:μ_0_size]
+
+# rounding numbers
+# res = round.(res, digits=4)
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0$") # , ylabel=L"$\nu$"
+ax = Axis(fig[1, 1], xlabel=L"$\mu_0$", ylabel=L"$\nu$")
 lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
-lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
-axislegend(position=:rt, nbanks=1, patchsize=(40,20))
+lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
 fig
 
 # save figures
@@ -192,65 +230,34 @@ save(PATH_FIG_γ * "\\" * filename, fig)
 filename = "fig_optimal_ν_μ_0" * ".png"
 save(PATH_FIG_γ * "\\" * filename, fig)
 
-#================================#
-# benchmark result - ν and μ_0_c #
-#================================#
-μ_0_c_grid = collect(0.1:0.1:0.90)
-μ_0_c_size = length(μ_0_c_grid)
-ν_1_grid = collect(0.0:0.1:2.0)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.1:2.0)
-ν_2_size = length(ν_1_grid)
-ν_res = zeros(μ_0_c_size, ν_1_size * ν_2_size, 8)
-ν_res_obj = zeros(μ_0_c_size, ν_1_size, ν_2_size)
-for μ_0_c_i = 1:μ_0_c_size
-    ν_res_i = 1
-    for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-        # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-        model = Model(Ipopt.Optimizer)
-        set_silent(model)
-        set_attribute(model, "tol", ϵ_tol)
-        @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-        @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-        @constraint(model, c1, x_1 + x_2 >= 1.0)
-        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c_grid[μ_0_c_i], ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-        @objective(model, Min, _obj_CB(x_1, x_2))
-        optimize!(model)
-        # save results
-        ν_res[μ_0_c_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-        ν_res[μ_0_c_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-        ν_res[μ_0_c_i, ν_res_i, 3] = objective_value(model)
-        ν_res_obj[μ_0_c_i, ν_1_i, ν_2_i] = objective_value(model)
-        ν_res[μ_0_c_i, ν_res_i, 4] = value(x_1)
-        ν_res[μ_0_c_i, ν_res_i, 5] = value(x_2)
-        ν_res[μ_0_c_i, ν_res_i, 6] = μ_1(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res[μ_0_c_i, ν_res_i, 7] = μ_2(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res[μ_0_c_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res_i += 1
-    end
-end
-
-# rounding numbers
-ν_res = round.(ν_res, digits=4)
-
-# minimizer and minimum
-ν_min_i = vec(getindex.(argmin(ν_res[:,:,3], dims=2), 2))
-ν_1_min = [ν_res[μ_0_c_i, ν_min_i[μ_0_c_i], 1] for μ_0_c_i = 1:μ_0_c_size]
-ν_2_min = [ν_res[μ_0_c_i, ν_min_i[μ_0_c_i], 2] for μ_0_c_i = 1:μ_0_c_size]
-
-# line plot
-fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu^c_0$") # , ylabel=L"$\nu$"
-lines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
-lines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
-axislegend(position=:rt, nbanks=1, patchsize=(40,20))
-fig
-
-# save figures
-filename = "fig_optimal_ν_μ_0_c" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
-filename = "fig_optimal_ν_μ_0_c" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
+# ν_res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
+# ν_res_obj = zeros(μ_0_size, ν_1_size, ν_2_size)
+# for μ_0_i = 1:μ_0_size
+#     ν_res_i = 1
+#     for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
+#         # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
+#         model = Model(Ipopt.Optimizer)
+#         set_silent(model)
+#         set_attribute(model, "tol", ϵ_tol)
+#         @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
+#         @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
+#         @constraint(model, c1, x_1 + x_2 >= 1.0)
+#         _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
+#         @objective(model, Min, _obj_CB(x_1, x_2))
+#         optimize!(model)
+#         # save results
+#         ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
+#         ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
+#         ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
+#         ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
+#         ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
+#         ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
+#         ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+#         ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+#         ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
+#         ν_res_i += 1
+#     end
+# end
 
 #=
 #===========================#
