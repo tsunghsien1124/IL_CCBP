@@ -21,7 +21,6 @@ else
 end
 PATH = mkpath(PWD * FL * VER)
 PATH_FIG = mkpath(PATH * FL * "Figures")
-PATH_FIG_γ = mkpath(PATH_FIG * FL * "γ_$(floor(Int, BP.γ))")
 
 #==============#
 # BP functions #
@@ -73,6 +72,7 @@ obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1",
     ϵ_tol::Float64 = 1E-8
 end
 BP = Benchmark_Parameters()
+PATH_FIG_γ = mkpath(PATH_FIG * FL * "γ_$(floor(Int, BP.γ))")
 
 #==================#
 # benchmark result #
@@ -254,8 +254,8 @@ res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
 ax = Axis(fig[1, 1], xlabel=L"$\mu_0^c$", ylabel=L"$\nu$")
-scatterlines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
+scatterlines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
+scatterlines!(ax, μ_0_c_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
 axislegend(position=:rc, nbanks=1, patchsize=(70, 30))
@@ -266,6 +266,72 @@ fig
 filename = "fig_optimal_ν_μ_0_c" * ".pdf"
 save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_μ_0_c" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+#==============================#
+# benchmark result - ν and ω_1 #
+#==============================#
+ω_1_grid = collect(0.5:0.05:1.5)
+ω_1_size = length(ω_1_grid)
+ν_1_grid = collect(0.07:0.001:0.13)
+ν_1_size = length(ν_1_grid)
+ν_2_grid = collect(0.07:0.001:0.13)
+ν_2_size = length(ν_2_grid)
+res = zeros(ω_1_size, ν_1_size, ν_2_size, 8)
+optimal_flexibility_func!(BP, res, "ω_1", ω_1_size, ω_1_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
+
+# minimizer and minimum
+res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
+ν_1_min = [res[ω_1_i, res_obj_min_ind[ω_1_i][2], res_obj_min_ind[ω_1_i][3], 1] for ω_1_i = 1:ω_1_size]
+ν_2_min = [res[ω_1_i, res_obj_min_ind[ω_1_i][2], res_obj_min_ind[ω_1_i][3], 2] for ω_1_i = 1:ω_1_size]
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"$\omega_1$", ylabel=L"$\nu$")
+scatterlines!(ax, ω_1_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
+scatterlines!(ax, ω_1_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
+# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
+# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
+axislegend(position=:rb, nbanks=1, patchsize=(70, 30))
+fig
+
+# save figures
+filename = "fig_optimal_ν_ω_1" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_ν_ω_1" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+#==============================#
+# benchmark result - ν and ω_2 #
+#==============================#
+ω_2_grid = collect(-1.5:0.05:-0.5)
+ω_2_size = length(ω_2_grid)
+ν_1_grid = collect(0.07:0.001:0.13)
+ν_1_size = length(ν_1_grid)
+ν_2_grid = collect(0.07:0.001:0.13)
+ν_2_size = length(ν_2_grid)
+res = zeros(ω_2_size, ν_1_size, ν_2_size, 8)
+optimal_flexibility_func!(BP, res, "ω_2", ω_2_size, ω_2_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
+
+# minimizer and minimum
+res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
+ν_1_min = [res[ω_2_i, res_obj_min_ind[ω_2_i][2], res_obj_min_ind[ω_2_i][3], 1] for ω_2_i = 1:ω_2_size]
+ν_2_min = [res[ω_2_i, res_obj_min_ind[ω_2_i][2], res_obj_min_ind[ω_2_i][3], 2] for ω_2_i = 1:ω_2_size]
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"$\omega_2$", ylabel=L"$\nu$")
+scatterlines!(ax, ω_2_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
+scatterlines!(ax, ω_2_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
+# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
+# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
+axislegend(position=:rb, nbanks=1, patchsize=(70, 30))
+fig
+
+# save figures
+filename = "fig_optimal_ν_ω_2" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_ν_ω_2" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
 #=
