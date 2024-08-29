@@ -15,14 +15,13 @@ using CairoMakie
 PWD = pwd()
 VER = "V9"
 if Sys.iswindows()
-    PATH = mkpath(PWD * "\\" * VER)
-    PATH_FIG = mkpath(PATH * "\\Figures")
-    PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, BP.γ))")
+    FL = "\\"
 else
-    PATH = mkpath(PWD * "/" * VER)
-    PATH_FIG = mkpath(PATH * "/Figures")
-    PATH_FIG_γ = mkpath(PATH_FIG * "/" * "γ_$(floor(Int, BP.γ))")
+    FL = "/"
 end
+PATH = mkpath(PWD * FL * VER)
+PATH_FIG = mkpath(PATH * FL * "Figures")
+PATH_FIG_γ = mkpath(PATH_FIG * FL * "γ_$(floor(Int, BP.γ))")
 
 #==============#
 # BP functions #
@@ -231,9 +230,9 @@ fig
 
 # save figures
 filename = "fig_optimal_ν_μ_0" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
+save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_μ_0" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
+save(PATH_FIG_γ * FL * filename, fig)
 
 #================================#
 # benchmark result - ν and μ_0_c #
@@ -265,9 +264,9 @@ fig
 
 # save figures
 filename = "fig_optimal_ν_μ_0_c" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
+save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_μ_0_c" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
+save(PATH_FIG_γ * FL * filename, fig)
 
 #=
 #===========================#
