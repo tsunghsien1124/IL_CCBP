@@ -235,23 +235,23 @@ filename = "fig_optimal_ν_μ_0" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
 # minimizer and minimum
-x_1_min = [res[μ_0_i, ν_1_min[μ_0_i], ν_2_min[μ_0_i], 4] for μ_0_i = 1:μ_0_size]
-x_2_min = [res[μ_0_i, ν_1_min[μ_0_i], ν_2_min[μ_0_i], 5] for μ_0_i = 1:μ_0_size]
+x_1_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 4] for μ_0_i = 1:μ_0_size]
+x_2_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 5] for μ_0_i = 1:μ_0_size]
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0$", ylabel=L"$\nu$")
-scatterlines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
+ax = Axis(fig[1, 1], xlabel=L"$\mu_0$")
+scatterlines!(ax, μ_0_grid, x_1_min, label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
+scatterlines!(ax, μ_0_grid, x_2_min, label=L"$x_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
+axislegend(position=:ct, nbanks=1, patchsize=(70, 30))
 fig
 
 # save figures
-filename = "fig_optimal_ν_μ_0" * ".pdf"
+filename = "fig_optimal_ν_μ_0_x" * ".pdf"
 save(PATH_FIG_γ * FL * filename, fig)
-filename = "fig_optimal_ν_μ_0" * ".png"
+filename = "fig_optimal_ν_μ_0_x" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
 #================================#
