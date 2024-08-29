@@ -63,7 +63,7 @@ obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1",
     μ_0::Float64 = 0.5
     μ_0_diff::Float64 = 0.0
     μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-    γ::Float64 = 1.0
+    γ::Float64 = 10.0
     x_T::Float64 = 2.0
     ν_1::Float64 = 1.0
     ν_2::Float64 = 1.0
@@ -203,9 +203,9 @@ end
 #==============================#
 μ_0_grid = collect(0.05:0.05:0.95)
 μ_0_size = length(μ_0_grid)
-ν_1_grid = collect(0.35:0.0025:0.51)
+ν_1_grid = collect(0.05:0.001:0.11)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.35:0.0025:0.51)
+ν_2_grid = collect(0.05:0.001:0.11)
 ν_2_size = length(ν_2_grid)
 res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "μ_0", μ_0_size, μ_0_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
@@ -226,7 +226,26 @@ scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
 axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
-ylims!(0.34,0.52)
+fig
+
+# save figures
+filename = "fig_optimal_ν_μ_0" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_ν_μ_0" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+# minimizer and minimum
+x_1_min = [res[μ_0_i, ν_1_min[μ_0_i], ν_2_min[μ_0_i], 4] for μ_0_i = 1:μ_0_size]
+x_2_min = [res[μ_0_i, ν_1_min[μ_0_i], ν_2_min[μ_0_i], 5] for μ_0_i = 1:μ_0_size]
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"$\mu_0$", ylabel=L"$\nu$")
+scatterlines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
+scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
+# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
+# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
+axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
 fig
 
 # save figures
