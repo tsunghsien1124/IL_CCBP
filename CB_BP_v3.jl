@@ -41,7 +41,7 @@ obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(
 obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * (1.0 - μ_0_c) * ((1.0 - x_2) * (ω_2 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0 + x_2 * (ω_2 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0)
 obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α) = α * (μ_0_c * (x_r(1, x_T, ν_1, ν_2) - x_T)^2 + (1.0 - μ_0_c) * (x_r(2, x_T, ν_1, ν_2) - x_T)^2)
 # obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
-obj_CB(x_1, x_2, para) =
+obj_CB(x_1, x_2, para::Dict{String,Float64}) =
     obj_CB_μ_0(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
     obj_CB_1(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
     obj_CB_2(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
@@ -52,13 +52,13 @@ obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1",
 # benchmark parameters #
 #======================#
 @with_kw struct Benchmark_Parameters
-    δ::Float64 = 1.0
-    ω_1::Float64 = 2.0
-    ω_2::Float64 = -2.0
+    δ::Float64 = 0.5
+    ω_1::Float64 = 1.0
+    ω_2::Float64 = -1.0
     μ_0::Float64 = 0.5
     μ_0_diff::Float64 = 0.0
     μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-    γ::Float64 = 1.0
+    γ::Float64 = 10.0
     x_T::Float64 = 2.0
     ν_1::Float64 = 1.0
     ν_2::Float64 = 1.0
@@ -192,7 +192,7 @@ function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,
         Threads.atomic_add!(jj, 1)
         Threads.lock(ll)
         update!(pp, jj[])
-        Threads.unlock(ll)  
+        Threads.unlock(ll)
     end
     return nothing
 end
@@ -202,26 +202,27 @@ end
 #==============================#
 μ_0_grid = collect(0.05:0.05:0.95)
 μ_0_size = length(μ_0_grid)
-ν_1_grid = collect(0.00:0.005:0.10)
+ν_1_grid = collect(0.05:0.001:0.10)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.00:0.005:0.10)
+ν_2_grid = collect(0.05:0.001:0.10)
 ν_2_size = length(ν_2_grid)
 res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "μ_0", μ_0_size, μ_0_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
 
-# minimizer and minimum
-res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2,3))
-ν_1_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 1] for μ_0_i = 1:μ_0_size]
-ν_2_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 2] for μ_0_i = 1:μ_0_size]
-
 # rounding numbers
 # res = round.(res, digits=4)
+
+# minimizer and minimum
+res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
+ν_1_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 1] for μ_0_i = 1:μ_0_size]
+ν_2_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 2] for μ_0_i = 1:μ_0_size]
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
 ax = Axis(fig[1, 1], xlabel=L"$\mu_0$", ylabel=L"$\nu$")
-lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
-lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
+scatterlines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4, markersize=20)
+scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4, markersize=20, marker=:xcross)
+axislegend(position=:rt, nbanks=1, patchsize=(40, 20))
 fig
 
 # save figures
@@ -229,35 +230,6 @@ filename = "fig_optimal_ν_μ_0" * ".pdf"
 save(PATH_FIG_γ * "\\" * filename, fig)
 filename = "fig_optimal_ν_μ_0" * ".png"
 save(PATH_FIG_γ * "\\" * filename, fig)
-
-# ν_res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
-# ν_res_obj = zeros(μ_0_size, ν_1_size, ν_2_size)
-# for μ_0_i = 1:μ_0_size
-#     ν_res_i = 1
-#     for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-#         # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-#         model = Model(Ipopt.Optimizer)
-#         set_silent(model)
-#         set_attribute(model, "tol", ϵ_tol)
-#         @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-#         @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-#         @constraint(model, c1, x_1 + x_2 >= 1.0)
-#         _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-#         @objective(model, Min, _obj_CB(x_1, x_2))
-#         optimize!(model)
-#         # save results
-#         ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-#         ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-#         ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
-#         ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
-#         ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
-#         ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
-#         ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-#         ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-#         ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-#         ν_res_i += 1
-#     end
-# end
 
 #=
 #===========================#
