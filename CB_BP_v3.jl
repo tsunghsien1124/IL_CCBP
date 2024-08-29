@@ -63,7 +63,7 @@ obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1",
     μ_0::Float64 = 0.5
     μ_0_diff::Float64 = 0.0
     μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-    γ::Float64 = 10.0
+    γ::Float64 = 1.0
     x_T::Float64 = 2.0
     ν_1::Float64 = 1.0
     ν_2::Float64 = 1.0
@@ -203,9 +203,9 @@ end
 #==============================#
 μ_0_grid = collect(0.05:0.05:0.95)
 μ_0_size = length(μ_0_grid)
-ν_1_grid = collect(0.05:0.001:0.10)
+ν_1_grid = collect(0.35:0.0025:0.51)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.05:0.001:0.10)
+ν_2_grid = collect(0.35:0.0025:0.51)
 ν_2_size = length(ν_2_grid)
 res = zeros(μ_0_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "μ_0", μ_0_size, μ_0_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
@@ -226,6 +226,7 @@ scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
 axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
+ylims!(0.34,0.52)
 fig
 
 # save figures
@@ -239,9 +240,9 @@ save(PATH_FIG_γ * FL * filename, fig)
 #================================#
 μ_0_c_grid = collect(0.05:0.05:0.95)
 μ_0_c_size = length(μ_0_c_grid)
-ν_1_grid = collect(0.0:0.0025:0.20)
+ν_1_grid = collect(0.05:0.025:1.65)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.0025:0.20)
+ν_2_grid = collect(0.05:0.025:1.65)
 ν_2_size = length(ν_2_grid)
 res = zeros(μ_0_c_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "μ_0_c", μ_0_c_size, μ_0_c_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
@@ -258,8 +259,7 @@ scatterlines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyl
 scatterlines!(ax, μ_0_c_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:rc, nbanks=1, patchsize=(70, 30))
-ylims!(-0.01,0.21)
+axislegend(position=:ct, nbanks=1, patchsize=(70, 30))
 fig
 
 # save figures
@@ -273,9 +273,9 @@ save(PATH_FIG_γ * FL * filename, fig)
 #==============================#
 ω_1_grid = collect(0.5:0.05:1.5)
 ω_1_size = length(ω_1_grid)
-ν_1_grid = collect(0.07:0.001:0.13)
+ν_1_grid = collect(0.35:0.005:0.65)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.07:0.001:0.13)
+ν_2_grid = collect(0.35:0.005:0.65)
 ν_2_size = length(ν_2_grid)
 res = zeros(ω_1_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "ω_1", ω_1_size, ω_1_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
@@ -306,9 +306,9 @@ save(PATH_FIG_γ * FL * filename, fig)
 #==============================#
 ω_2_grid = collect(-1.5:0.05:-0.5)
 ω_2_size = length(ω_2_grid)
-ν_1_grid = collect(0.07:0.001:0.13)
+ν_1_grid = collect(0.35:0.005:0.65)
 ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.07:0.001:0.13)
+ν_2_grid = collect(0.35:0.005:0.65)
 ν_2_size = length(ν_2_grid)
 res = zeros(ω_2_size, ν_1_size, ν_2_size, 8)
 optimal_flexibility_func!(BP, res, "ω_2", ω_2_size, ω_2_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
@@ -325,7 +325,7 @@ scatterlines!(ax, ω_2_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=
 scatterlines!(ax, ω_2_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
 # lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
 # lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:rb, nbanks=1, patchsize=(70, 30))
+axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
 fig
 
 # save figures
