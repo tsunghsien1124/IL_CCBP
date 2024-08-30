@@ -151,46 +151,28 @@ function flexibility_func(BP::Benchmark_Parameters, TA::String, TA_::Float64, ν
     obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α)])
     obj_CB_para[TA] = TA_
 
-    # slove CB's optimization problem for (x_1, x_2)
-    model = Model(Ipopt.Optimizer)
-    set_silent(model)
-    set_attribute(model, "tol", ϵ_tol)
-    @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-    @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-    @constraint(model, c1, x_1 + x_2 >= 1.0)
-    _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, obj_CB_para)
-    @objective(model, Min, _obj_CB(x_1, x_2))
-    optimize!(model)
-
-    # report optimized minimum value
-    return objective_value(model)
+    # slove CB's optimization problem for (x_1, x_2) and report optimized minimum value
+    return optimal_x_func(obj_CB_para, ϵ_tol, ϵ_x)[1]
 end
 
 function optimal_flexibility_func(BP::Benchmark_Parameters, TA::String, TA_size::Int64, TA_grid::Vector{Float64})
 
     # unpack benchmark parameters
-    @unpack μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, α, ϵ_x, ϵ_tol = BP
+    @unpack ϵ_x, ϵ_tol = BP
 
-    # create the parameter dictionary
-    obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α)])
-    obj_CB_para[TA] = TA_
-
-    # slove CB's optimization problem for (x_1, x_2)
+    # slove CB's optimization flexibility problem for (ν_1, ν_2)
     model = Model(Ipopt.Optimizer)
     set_silent(model)
     set_attribute(model, "tol", ϵ_tol)
-    @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-    @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-    @constraint(model, c1, x_1 + x_2 >= 1.0)
+    @variable(model, ϵ_x <= ν_1 <= (1.0 - ϵ_x), start = 0.5)
+    @variable(model, ϵ_x <= ν_2 <= (1.0 - ϵ_x), start = 0.5)
     _obj_flexibility(ν_1, ν_2) = flexibility_func(BP, TA, TA_, ν_1, ν_2)
-
-    @objective(model, Min, _obj_CB(x_1, x_2))
+    @objective(model, Min, _obj_flexibility(ν_1, ν_2))
     optimize!(model)
 
     # report optimized minimum value
     return objective_value(model)
 end
-
 
 # function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,4},
 #     TA::String, TA_size::Int64, TA_grid::Vector{Float64},
