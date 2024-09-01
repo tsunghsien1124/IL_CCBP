@@ -45,13 +45,13 @@ obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = δ * 
 obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * μ_0_c * (x_1 * (ω_1 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0 + (1.0 - x_1) * (ω_1 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0)
 obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * (1.0 - μ_0_c) * ((1.0 - x_2) * (ω_2 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0 + x_2 * (ω_2 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0)
 obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α) = α * (μ_0_c * (x_r(1, x_T, ν_1, ν_2) - x_T)^2 + (1.0 - μ_0_c) * (x_r(2, x_T, ν_1, ν_2) - x_T)^2)
-# obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
-obj_CB(x_1, x_2, para::Dict{String,Any}) =
-    obj_CB_μ_0(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
-    obj_CB_1(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
-    obj_CB_2(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
-    obj_CB_x(para["μ_0_c"], para["x_T"], para["ν_1"], para["ν_2"], para["α"])
-obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1", "ν_2", "α"]
+obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
+# obj_CB(x_1, x_2, para::Dict{String,Any}) =
+    # obj_CB_μ_0(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    # obj_CB_1(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_1"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    # obj_CB_2(x_1, x_2, para["μ_0"], para["μ_0_c"], para["ω_2"], para["δ"], para["γ"], para["x_T"], para["ν_1"], para["ν_2"]) +
+    # obj_CB_x(para["μ_0_c"], para["x_T"], para["ν_1"], para["ν_2"], para["α"])
+# obj_CB_para_list = ["μ_0", "μ_0_c", "ω_1", "ω_2", "δ", "γ", "x_T", "ν_1", "ν_2", "α"]
 
 #======================#
 # benchmark parameters #
@@ -77,20 +77,19 @@ PATH_FIG_γ = mkpath(PATH_FIG * FL * "γ_$(floor(Int, BP.γ))")
 #==================#
 # benchmark result #
 #==================#
-obj_CB_para = Dict([("μ_0", BP.μ_0), ("μ_0_c", BP.μ_0_c), ("ω_1", BP.ω_1), ("ω_2", BP.ω_2), ("δ", BP.δ), ("γ", BP.γ), ("x_T", BP.x_T), ("ν_1", BP.ν_1), ("ν_2", BP.ν_2), ("α", BP.α)])
-function optimal_x_func(obj_CB_para::Dict{String,Any}, ϵ_tol::Float64, ϵ_x::Float64)
+function optimal_x_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, ν_1, ν_2, α::Float64, ϵ_x::Float64, ϵ_tol::Float64)
     model = Model(Ipopt.Optimizer)
     set_silent(model)
     set_attribute(model, "tol", ϵ_tol)
     @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
     @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
     @constraint(model, c1, x_1 + x_2 >= 1.0)
-    _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, obj_CB_para)
+    _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α)
     @objective(model, Min, _obj_CB(x_1, x_2))
     optimize!(model)
     return objective_value(model), value(x_1), value(x_2)
 end
-println("Find the minimum of $(optimal_x_func(obj_CB_para, BP.ϵ_tol, BP.ϵ_x)[1]) at (x_1,x_2) = ($(optimal_x_func(obj_CB_para, BP.ϵ_tol, BP.ϵ_x)[2]), $(optimal_x_func(obj_CB_para, BP.ϵ_tol, BP.ϵ_x)[2])")
+println("Find the minimum of $(optimal_x_func(BP.μ_0,BP.μ_0_c,BP.ω_1,BP.ω_2,BP.δ,BP.γ,BP.x_T,BP.ν_1,BP.ν_2,BP.α, BP.ϵ_x, BP.ϵ_tol)[1]) at (x_1,x_2) = ($(optimal_x_func(BP.μ_0,BP.μ_0_c,BP.ω_1,BP.ω_2,BP.δ,BP.γ,BP.x_T,BP.ν_1,BP.ν_2,BP.α, BP.ϵ_x, BP.ϵ_tol)[2]), $(optimal_x_func(BP.μ_0,BP.μ_0_c,BP.ω_1,BP.ω_2,BP.δ,BP.γ,BP.x_T,BP.ν_1,BP.ν_2,BP.α, BP.ϵ_x, BP.ϵ_tol)[3])")
 
 #===========================================#
 # handy functions for optimal flexibility ν #
@@ -115,13 +114,13 @@ function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,
     Threads.@threads for (ν_2_i, ν_1_i, TA_i) in ind_nested_loop
 
         # create the parameter dictionary
-        obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α)])
+        obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α), ("ϵ_x", ϵ_x), ("ϵ_tol", ϵ_tol)])
         obj_CB_para[TA] = TA_grid[TA_i]
         obj_CB_para["ν_1"] = ν_1_grid[ν_1_i]
         obj_CB_para["ν_2"] = ν_2_grid[ν_2_i]
 
         # slove CB's optimization problem for (x_1, x_2)
-        obj_opt, x_1_opt, x_2_opt = optimal_x_func(obj_CB_para, ϵ_tol, ϵ_x)
+        obj_opt, x_1_opt, x_2_opt = optimal_x_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["ν_1"], obj_CB_para["ν_2"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_tol"])
 
         # save results
         @inbounds res[TA_i, ν_1_i, ν_2_i, 1] = ν_1_grid[ν_1_i]
@@ -142,23 +141,25 @@ function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,
     return nothing
 end
 
-function ν_func(BP::Benchmark_Parameters, TA::String, TA_::Float64, ν_1, ν_2)
+# function ν_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, ν_1::Float64, ν_2::Float64, α::Float64, ϵ_x::Float64, ϵ_tol::Float64)
 
-    # unpack benchmark parameters
-    @unpack μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, α, ϵ_x, ϵ_tol = BP
+#     # unpack benchmark parameters
+#     @unpack μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, α, ϵ_x, ϵ_tol = BP
 
-    # create the parameter dictionary
-    obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α)])
-    obj_CB_para[TA] = TA_
+#     # create the parameter dictionary
+#     obj_CB_para = Dict([("μ_0", μ_0), ("μ_0_c", μ_0_c), ("ω_1", ω_1), ("ω_2", ω_2), ("δ", δ), ("γ", γ), ("x_T", x_T), ("ν_1", ν_1), ("ν_2", ν_2), ("α", α), ("ϵ_x", ϵ_x), ("ϵ_tol", ϵ_tol)])
+#     obj_CB_para[TA] = TA_
+#     obj_CB_para["ν_1"] = ν_1
+#     obj_CB_para["ν_2"] = ν_2
 
-    # slove CB's optimization problem for (x_1, x_2) and report optimized minimum value
-    return optimal_x_func(obj_CB_para, ϵ_tol, ϵ_x)[1]
-end
+#     # slove CB's optimization problem for (x_1, x_2) and report optimized minimum value
+#     return optimal_x_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["ν_1"], obj_CB_para["ν_2"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_tol"])[1]
 
-function optimal_ν_func(BP::Benchmark_Parameters, TA::String, TA_::Float64)
+#     optimal_x_func(μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α, ϵ_x, ϵ_tol)[1]
 
-    # unpack benchmark parameters
-    @unpack ϵ_x, ϵ_tol = BP
+# end
+
+function optimal_ν_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, α::Float64, ϵ_x::Float64, ϵ_tol::Float64)
 
     # slove CB's optimization flexibility problem for (ν_1, ν_2)
     model = Model(Ipopt.Optimizer)
@@ -166,12 +167,12 @@ function optimal_ν_func(BP::Benchmark_Parameters, TA::String, TA_::Float64)
     set_attribute(model, "tol", ϵ_tol)
     @variable(model, 0.0 <= ν_1, start = 0.0)
     @variable(model, 0.0 <= ν_2, start = 0.0)
-    _obj_ν(ν_1, ν_2) = ν_func(BP, TA, TA_, ν_1, ν_2)
+    _obj_ν(ν_1, ν_2) = optimal_x_func(μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α, ϵ_x, ϵ_tol)[1]
     @objective(model, Min, _obj_ν(ν_1, ν_2))
     optimize!(model)
 
     # report optimized minimum value
-    return objective_value(model)
+    return objective_value(model), value(ν_1), value(ν_2)
 end
 
 # function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,4},
