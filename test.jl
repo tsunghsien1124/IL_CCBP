@@ -1,253 +1,222 @@
-#=================#
-# Import packages #
-#=================#
+#=========================================#
+# JuMP example (1) -- Nested optimization #
+#=========================================#
 using JuMP
 import Ipopt
-using PrettyTables
-using GLMakie
-using CairoMakie
 
-#==============#
-# Housekeeping #
-#==============#
-PWD = pwd()
-VER = "V9"
-PATH = mkpath(PWD * "\\" * VER)
-PATH_FIG = mkpath(PATH * "\\Figures")
-
-#==============#
-# BP functions #
-#==============#
-τ_1(x_1, x_2, μ) = x_1 * μ + (1.0 - x_2) * (1.0 - μ)
-μ_1(x_1, x_2, μ) = x_1 * μ / τ_1(x_1, x_2, μ)
-τ_2(x_1, x_2, μ) = (1.0 - x_1) * μ + x_2 * (1.0 - μ)
-μ_2(x_1, x_2, μ) = (1.0 - x_1) * μ / τ_2(x_1, x_2, μ)
-H(μ) = -(μ * log(μ) + (1.0 - μ) * log((1.0 - μ)))
-c(x_1, x_2, μ) = (1.0 / log(2.0)) * (H(μ) - τ_1(x_1, x_2, μ) * H(μ_1(x_1, x_2, μ)) - τ_2(x_1, x_2, μ) * H(μ_2(x_1, x_2, μ)))
-
-#=====================#
-# inflation functions #
-#=====================#
-x_r(ω_i, x_T, ν_1, ν_2) = ω_i == 1 ? x_T + ν_1 : x_T - ν_2
-x_e(μ, x_T, ν_1, ν_2) = μ * x_r(1, x_T, ν_1, ν_2) + (1.0 - μ) * x_r(2, x_T, ν_1, ν_2) # x_T + ν * (2.0 * μ - 1.0) if symmetric ν
-
-#========================#
-# CB objective functions #
-#========================#
-obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = δ * c(x_1, x_2, μ_0) * (μ_0_c * (ω_1 + γ * (x_e(μ_0, x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0 + (1.0 - μ_0_c) * (ω_2 + γ * (x_e(μ_0, x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0)
-obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * μ_0_c * (x_1 * (ω_1 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0 + (1.0 - x_1) * (ω_1 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(1, x_T, ν_1, ν_2)))^2.0)
-obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) = (1.0 - δ * c(x_1, x_2, μ_0)) * (1.0 - μ_0_c) * ((1.0 - x_2) * (ω_2 + γ * (x_e(μ_1(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0 + x_2 * (ω_2 + γ * (x_e(μ_2(x_1, x_2, μ_0), x_T, ν_1, ν_2) - x_r(2, x_T, ν_1, ν_2)))^2.0)
-obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α) = α * (μ_0_c * (x_r(1, x_T, ν_1, ν_2) - x_T)^2 + (1.0 - μ_0_c) * (x_r(2, x_T, ν_1, ν_2) - x_T)^2)
-obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) = obj_CB_μ_0(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_1(x_1, x_2, μ_0, μ_0_c, ω_1, δ, γ, x_T, ν_1, ν_2) + obj_CB_2(x_1, x_2, μ_0, μ_0_c, ω_2, δ, γ, x_T, ν_1, ν_2) + obj_CB_x(μ_0_c, x_T, ν_1, ν_2, α)
-
-#======================#
-# benchmark parameters #
-#======================#
-δ = 0.5
-ω_1 = 1.0
-ω_2 = -1.0
-μ_0 = 0.5
-μ_0_diff = 0.0
-μ_0_c = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-γ = 10.0
-x_T = 2.0
-# ν_1 = 1.0
-# ν_2 = ν_1
-α = 1.0
-ϵ_x = 1E-6
-ϵ_tol = 1E-8
-
-#=========================#
-# creating result folders #
-#=========================#
-PATH_FIG_γ = mkpath(PATH_FIG * "\\" * "γ_$(floor(Int, γ))")
-
-#==================#
-# benchmark result #
-#==================#
-# model = Model(Ipopt.Optimizer)
-# set_silent(model)
-# set_attribute(model, "tol", ϵ_tol)
-# @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-# @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-# @constraint(model, c1, x_1 + x_2 >= 1.0)
-# _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2)
-# @objective(model, Min, _obj_CB(x_1, x_2))
-# optimize!(model)
-# println("Given (μ_0, μ_0^c, ω_1, ω_2) = ($μ_0, $μ_0_c, $ω_1, $ω_2)")
-# println("Find the minimum of $(objective_value(model)) at (x_1,x_2) = ($(value(x_1)), $(value(x_2)))")
-
-# #======================#
-# # benchmark result - ν #
-# #======================#
-# ν_1_grid = collect(0.0:0.05:2.0)
-# ν_1_size = length(ν_1_grid)
-# ν_2_grid = collect(0.0:0.05:2.0)
-# ν_2_size = length(ν_1_grid)
-# ν_res = zeros(ν_1_size * ν_2_size, 8)
-# ν_res_obj = zeros(ν_1_size, ν_2_size)
-# ν_res_i = 1
-# for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-#     # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-#     model = Model(Ipopt.Optimizer)
-#     set_silent(model)
-#     set_attribute(model, "tol", ϵ_tol)
-#     @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-#     @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-#     @constraint(model, c1, x_1 + x_2 >= 1.0)
-#     _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-#     @objective(model, Min, _obj_CB(x_1, x_2))
-#     optimize!(model)
-#     # save results
-#     ν_res[ν_res_i, 1] = ν_1_grid[ν_1_i]
-#     ν_res[ν_res_i, 2] = ν_2_grid[ν_2_i]
-#     ν_res[ν_res_i, 3] = objective_value(model)
-#     ν_res_obj[ν_1_i, ν_2_i] = objective_value(model)
-#     ν_res[ν_res_i, 4] = value(x_1)
-#     ν_res[ν_res_i, 5] = value(x_2)
-#     ν_res[ν_res_i, 6] = μ_1(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-#     ν_res[ν_res_i, 7] = μ_2(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-#     ν_res[ν_res_i, 8] = 1.0 - δ * c(ν_res[ν_res_i, 4], ν_res[ν_res_i, 5], μ_0)
-#     ν_res_i += 1
-# end
-
-# # rounding numbers
-# ν_res = round.(ν_res, digits=4)
-
-# # minimizer and minimum
-# ν_min_i = argmin(ν_res[:, 3])
-# ν_min = ν_res[ν_min_i, :]
-
-# # heatmap
-# fig = Figure(fontsize=32, size=(600, 500))
-# ax = Axis(fig[1, 1], xlabel=L"$\nu_1$", ylabel=L"$\nu_2$")
-# hm = heatmap!(ax, ν_1_grid, ν_2_grid, ν_res_obj, colormap=(:viridis,0.8))
-# scatter!(ax, (ν_res[ν_min_i, 1], ν_res[ν_min_i, 2]), color=:red, strokecolor=:red, strokewidth=5)
-# Colorbar(fig[:, end+1], hm)
-# fig
-
-# # save figures
-# filename = "fig_optimal_ν" * ".pdf"
-# save(PATH_FIG_γ * "\\" * filename, fig)
-# filename = "fig_optimal_ν" * ".png"
-# save(PATH_FIG_γ * "\\" * filename, fig)
-
-#==============================#
-# benchmark result - ν and μ_0 #
-#==============================#
-μ_0_grid = collect(0.1:0.1:0.90)
-μ_0_size = length(μ_0_grid)
-ν_1_grid = collect(0.0:0.1:2.0)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.1:2.0)
-ν_2_size = length(ν_2_grid)
-ν_res = zeros(μ_0_size, ν_1_size * ν_2_size, 8)
-ν_res_obj = zeros(μ_0_size, ν_1_size, ν_2_size)
-for μ_0_i = 1:μ_0_size
-    ν_res_i = 1
-    for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-        # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-        model = Model(Ipopt.Optimizer)
-        set_silent(model)
-        set_attribute(model, "tol", ϵ_tol)
-        @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-        @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-        @constraint(model, c1, x_1 + x_2 >= 1.0)
-        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0_grid[μ_0_i], μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-        @objective(model, Min, _obj_CB(x_1, x_2))
-        optimize!(model)
-        # save results
-        ν_res[μ_0_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-        ν_res[μ_0_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-        ν_res[μ_0_i, ν_res_i, 3] = objective_value(model)
-        ν_res_obj[μ_0_i, ν_1_i, ν_2_i] = objective_value(model)
-        ν_res[μ_0_i, ν_res_i, 4] = value(x_1)
-        ν_res[μ_0_i, ν_res_i, 5] = value(x_2)
-        ν_res[μ_0_i, ν_res_i, 6] = μ_1(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res[μ_0_i, ν_res_i, 7] = μ_2(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res[μ_0_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_i, ν_res_i, 4], ν_res[μ_0_i, ν_res_i, 5], μ_0_grid[μ_0_i])
-        ν_res_i += 1
-    end
+function solve_lower_level(x::T...) where {T}
+    model = Model(Ipopt.Optimizer)
+    set_silent(model)
+    @variable(model, y[1:2])
+    @objective(
+        model,
+        Max,
+        x[1]^2 * y[1] + x[2]^2 * y[2] - x[1] * y[1]^4 - 2 * x[2] * y[2]^4,
+    )
+    @constraint(model, (y[1] - 10)^2 + (y[2] - 10)^2 <= 25)
+    optimize!(model)
+    @assert is_solved_and_feasible(model)
+    return objective_value(model), value.(y)
 end
 
-# rounding numbers
-ν_res = round.(ν_res, digits=4)
-
-# minimizer and minimum
-ν_min_i = vec(getindex.(argmin(ν_res[:,:,3], dims=2), 2))
-ν_1_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 1] for μ_0_i = 1:μ_0_size]
-ν_2_min = [ν_res[μ_0_i, ν_min_i[μ_0_i], 2] for μ_0_i = 1:μ_0_size]
-
-# line plot
-fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0$") # , ylabel=L"$\nu$"
-lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
-lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
-axislegend(position=:rt, nbanks=1, patchsize=(40,20))
-fig
-
-# save figures
-filename = "fig_optimal_ν_μ_0" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
-filename = "fig_optimal_ν_μ_0" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
-
-#================================#
-# benchmark result - ν and μ_0_c #
-#================================#
-μ_0_c_grid = collect(0.1:0.1:0.90)
-μ_0_c_size = length(μ_0_c_grid)
-ν_1_grid = collect(0.0:0.1:2.0)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.0:0.1:2.0)
-ν_2_size = length(ν_1_grid)
-ν_res = zeros(μ_0_c_size, ν_1_size * ν_2_size, 8)
-ν_res_obj = zeros(μ_0_c_size, ν_1_size, ν_2_size)
-for μ_0_c_i = 1:μ_0_c_size
-    ν_res_i = 1
-    for ν_1_i = 1:ν_1_size, ν_2_i = 1:ν_2_size
-        # slove CB's optimization problem for a given μ_0 along with other benchmark parameters
-        model = Model(Ipopt.Optimizer)
-        set_silent(model)
-        set_attribute(model, "tol", ϵ_tol)
-        @variable(model, ϵ_x <= x_1 <= (1.0 - ϵ_x), start = 0.5)
-        @variable(model, ϵ_x <= x_2 <= (1.0 - ϵ_x), start = 0.5)
-        @constraint(model, c1, x_1 + x_2 >= 1.0)
-        _obj_CB(x_1, x_2) = obj_CB(x_1, x_2, μ_0, μ_0_c_grid[μ_0_c_i], ω_1, ω_2, δ, γ, x_T, ν_1_grid[ν_1_i], ν_2_grid[ν_2_i])
-        @objective(model, Min, _obj_CB(x_1, x_2))
-        optimize!(model)
-        # save results
-        ν_res[μ_0_c_i, ν_res_i, 1] = ν_1_grid[ν_1_i]
-        ν_res[μ_0_c_i, ν_res_i, 2] = ν_2_grid[ν_2_i]
-        ν_res[μ_0_c_i, ν_res_i, 3] = objective_value(model)
-        ν_res_obj[μ_0_c_i, ν_1_i, ν_2_i] = objective_value(model)
-        ν_res[μ_0_c_i, ν_res_i, 4] = value(x_1)
-        ν_res[μ_0_c_i, ν_res_i, 5] = value(x_2)
-        ν_res[μ_0_c_i, ν_res_i, 6] = μ_1(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res[μ_0_c_i, ν_res_i, 7] = μ_2(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res[μ_0_c_i, ν_res_i, 8] = 1.0 - δ * c(ν_res[μ_0_c_i, ν_res_i, 4], ν_res[μ_0_c_i, ν_res_i, 5], μ_0_c_grid[μ_0_c_i])
-        ν_res_i += 1
-    end
+function V(x::T...) where {T}
+    f, _ = solve_lower_level(x...)
+    return f
 end
 
-# rounding numbers
-ν_res = round.(ν_res, digits=4)
+function ∇V(g::AbstractVector, x...)
+    _, y = solve_lower_level(x...)
+    g[1] = 2 * x[1] * y[1] - y[1]^4
+    g[2] = 2 * x[2] * y[2] - 2 * y[2]^4
+    return
+end
 
-# minimizer and minimum
-ν_min_i = vec(getindex.(argmin(ν_res[:,:,3], dims=2), 2))
-ν_1_min = [ν_res[μ_0_c_i, ν_min_i[μ_0_c_i], 1] for μ_0_c_i = 1:μ_0_c_size]
-ν_2_min = [ν_res[μ_0_c_i, ν_min_i[μ_0_c_i], 2] for μ_0_c_i = 1:μ_0_c_size]
+function ∇²V(H::AbstractMatrix, x...)
+    _, y = solve_lower_level(x...)
+    H[1, 1] = 2 * y[1]
+    H[2, 2] = 2 * y[2]
+    return
+end
 
-# line plot
-fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu^c_0$") # , ylabel=L"$\nu$"
-lines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
-lines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
-axislegend(position=:rt, nbanks=1, patchsize=(40,20))
-fig
+model = Model(Ipopt.Optimizer)
+@variable(model, x[1:2] >= 0)
+@operator(model, op_V, 2, V, ∇V, ∇²V)
+# @operator(model, op_V, 2, V)
+@objective(model, Min, x[1]^2 + x[2]^2 + op_V(x[1], x[2]))
+optimize!(model)
+@assert is_solved_and_feasible(model)
+solution_summary(model)
 
-# save figures
-filename = "fig_optimal_ν_μ_0_c" * ".pdf"
-save(PATH_FIG_γ * "\\" * filename, fig)
-filename = "fig_optimal_ν_μ_0_c" * ".png"
-save(PATH_FIG_γ * "\\" * filename, fig)
+objective_value(model)
+
+value.(x)
+
+_, y = solve_lower_level(value.(x)...)
+y
+
+# Automatic differentiation using ForwardDiff.jl
+
+model = Model(Ipopt.Optimizer)
+@variable(model, x[1:2] >= 0)
+@operator(model, op_V, 2, V, fdiff_derivatives(V)...)
+@objective(model, Min, x[1]^2 + x[2]^2 + op_V(x[1], x[2]))
+optimize!(model)
+@assert is_solved_and_feasible(model)
+solution_summary(model)
+
+#=================================#
+# JuMP example (2) -- using Cache #
+#=================================#
+mutable struct Cache
+    x::Any
+    f::Float64
+    y::Vector{Float64}
+end
+
+function _update_if_needed(cache::Cache, x...)
+    if cache.x !== x
+        cache.f, cache.y = solve_lower_level(x...)
+        cache.x = x
+    end
+    return
+end
+
+function cached_f(cache::Cache, x...)
+    _update_if_needed(cache, x...)
+    return cache.f
+end
+
+function cached_∇f(cache::Cache, g::AbstractVector, x...)
+    _update_if_needed(cache, x...)
+    g[1] = 2 * x[1] * cache.y[1] - cache.y[1]^4
+    g[2] = 2 * x[2] * cache.y[2] - 2 * cache.y[2]^4
+    return
+end
+
+function cached_∇²f(cache::Cache, H::AbstractMatrix, x...)
+    _update_if_needed(cache, x...)
+    H[1, 1] = 2 * cache.y[1]
+    H[2, 2] = 2 * cache.y[2]
+    return
+end
+
+model = Model(Ipopt.Optimizer)
+@variable(model, x[1:2] >= 0)
+cache = Cache(Float64[], NaN, Float64[])
+@operator(
+    model,
+    op_cached_f,
+    2,
+    (x...) -> cached_f(cache, x...),
+    (g, x...) -> cached_∇f(cache, g, x...),
+    (H, x...) -> cached_∇²f(cache, H, x...),
+)
+@objective(model, Min, x[1]^2 + x[2]^2 + op_cached_f(x[1], x[2]))
+optimize!(model)
+@assert is_solved_and_feasible(model)
+solution_summary(model)
+
+#===============================================#
+# JuMP example (3) -- Automatic differentiation #
+#===============================================#
+using JuMP
+import Enzyme
+import ForwardDiff
+import Ipopt
+import Test
+
+f(x::T...) where {T} = (1 - x[1])^2 + 100 * (x[2] - x[1]^2)^2
+
+x = rand(2)
+
+f(x...)
+
+function analytic_∇f(g::AbstractVector, x...)
+    g[1] = 400 * x[1]^3 - 400 * x[1] * x[2] + 2 * x[1] - 2
+    g[2] = 200 * (x[2] - x[1]^2)
+    return
+end
+
+analytic_g = zeros(2)
+analytic_∇f(analytic_g, x...)
+analytic_g
+
+function analytic_∇²f(H::AbstractMatrix, x...)
+    H[1, 1] = 1200 * x[1]^2 - 400 * x[2] + 2
+    # H[1, 2] = -400 * x[1] <-- not needed because Hessian is symmetric
+    H[2, 1] = -400 * x[1]
+    H[2, 2] = 200.0
+    return
+end
+
+analytic_H = zeros(2, 2)
+analytic_∇²f(analytic_H, x...)
+analytic_H
+
+function analytic_rosenbrock()
+    model = Model(Ipopt.Optimizer)
+    set_silent(model)
+    @variable(model, x[1:2])
+    @operator(model, op_rosenbrock, 2, f, analytic_∇f, analytic_∇²f)
+    @objective(model, Min, op_rosenbrock(x[1], x[2]))
+    optimize!(model)
+    Test.@test is_solved_and_feasible(model)
+    return value.(x)
+end
+
+analytic_rosenbrock()
+
+function fdiff_∇f(g::AbstractVector{T}, x::Vararg{T,N}) where {T,N}
+    ForwardDiff.gradient!(g, y -> f(y...), collect(x))
+    return
+end
+
+fdiff_g = zeros(2)
+fdiff_∇f(fdiff_g, x...)
+Test.@test ≈(analytic_g, fdiff_g)
+
+function fdiff_∇²f(H::AbstractMatrix{T}, x::Vararg{T,N}) where {T,N}
+    h = ForwardDiff.hessian(y -> f(y...), collect(x))
+    for i in 1:N, j in 1:i
+        H[i, j] = h[i, j]
+    end
+    return
+end
+
+fdiff_H = zeros(2, 2)
+fdiff_∇²f(fdiff_H, x...)
+Test.@test ≈(analytic_H, fdiff_H)
+
+"""
+    fdiff_derivatives(f::Function) -> Tuple{Function,Function}
+
+Return a tuple of functions that evaluate the gradient and Hessian of `f` using
+ForwardDiff.jl.
+"""
+function fdiff_derivatives(f::Function)
+    function ∇f(g::AbstractVector{T}, x::Vararg{T,N}) where {T,N}
+        ForwardDiff.gradient!(g, y -> f(y...), collect(x))
+        return
+    end
+    function ∇²f(H::AbstractMatrix{T}, x::Vararg{T,N}) where {T,N}
+        h = ForwardDiff.hessian(y -> f(y...), collect(x))
+        for i in 1:N, j in 1:i
+            H[i, j] = h[i, j]
+        end
+        return
+    end
+    return ∇f, ∇²f
+end
+
+function fdiff_rosenbrock()
+    model = Model(Ipopt.Optimizer)
+    set_silent(model)
+    @variable(model, x[1:2])
+    @operator(model, op_rosenbrock, 2, f, fdiff_derivatives(f)...)
+    @objective(model, Min, op_rosenbrock(x[1], x[2]))
+    optimize!(model)
+    Test.@test is_solved_and_feasible(model)
+    return value.(x)
+end
+
+fdiff_rosenbrock()
