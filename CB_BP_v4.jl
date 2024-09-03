@@ -51,19 +51,19 @@ obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α) = obj_CB
 # benchmark parameters #
 #======================#
 @with_kw struct Benchmark_Parameters
-    δ::Float64 = 0.0
+    δ::Float64 = 0.5
     ω_1::Float64 = 1.0
     ω_2::Float64 = -1.0
-    μ_0::Float64 = 0.1
+    μ_0::Float64 = 0.5
     μ_0_diff::Float64 = 0.0
     μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
     γ::Float64 = 1.0
     x_T::Float64 = 2.0
-    ν_1::Float64 = 0.609756
-    ν_2::Float64 = 0.609756
-    α::Float64 = 0.0
+    ν_1::Float64 = 1.0
+    ν_2::Float64 = 1.0
+    α::Float64 = 1.0
     ϵ_x::Float64 = 1E-8
-    ϵ_x_p::Float64 = 1E-2
+    ϵ_x_p::Float64 = 1E-4
     ϵ_tol::Float64 = 1E-10
 end
 BP = Benchmark_Parameters()
@@ -72,21 +72,21 @@ PATH_FIG_γ = mkpath(PATH_FIG * FL * "γ_$(floor(Int, BP.γ))")
 #==================#
 # benchmark result #
 #==================#
-function optimal_x_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, ν_1::Float64, ν_2::Float64, α::Float64, ϵ_x::Float64, ϵ_x_p::Float64, ϵ_tol::Float64)
-    model = Model(Ipopt.Optimizer)
-    set_silent(model)
-    set_attribute(model, "tol", ϵ_tol)
-    @variable(model, ϵ_x <= x_1 <= (1.0 * ϵ_x_p - ϵ_x), start = 1.0 * ϵ_x_p / 2.0)
-    @variable(model, ϵ_x <= x_2 <= (1.0 * ϵ_x_p - ϵ_x), start = 1.0 * ϵ_x_p / 2.0)
-    @constraint(model, c1, x_1 + x_2 >= 1.0 * ϵ_x_p)
-    _obj_CB(x_1, x_2) = obj_CB(x_1 / ϵ_x_p, x_2 / ϵ_x_p, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α)
-    @objective(model, Min, _obj_CB(x_1, x_2))
-    optimize!(model)
-    @assert is_solved_and_feasible(model)
-    return objective_value(model), value(x_1) / ϵ_x_p, value(x_2) / ϵ_x_p
-end
-obj_opt, x_1_opt, x_2_opt = optimal_x_func(BP.μ_0, BP.μ_0_c, BP.ω_1, BP.ω_2, BP.δ, BP.γ, BP.x_T, BP.ν_1, BP.ν_2, BP.α, BP.ϵ_x, BP.ϵ_x_p, BP.ϵ_tol)
-println("Find the minimum of $obj_opt at (x_1, x_2) = ($x_1_opt, $x_2_opt)")
+# function optimal_x_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, ν_1::Float64, ν_2::Float64, α::Float64, ϵ_x::Float64, ϵ_x_p::Float64, ϵ_tol::Float64)
+#     model = Model(Ipopt.Optimizer)
+#     set_silent(model)
+#     set_attribute(model, "tol", ϵ_tol)
+#     @variable(model, ϵ_x <= x_1 <= (1.0 * ϵ_x_p - ϵ_x), start = 1.0 * ϵ_x_p / 2.0)
+#     @variable(model, ϵ_x <= x_2 <= (1.0 * ϵ_x_p - ϵ_x), start = 1.0 * ϵ_x_p / 2.0)
+#     @constraint(model, c1, x_1 + x_2 >= 1.0 * ϵ_x_p)
+#     _obj_CB(x_1, x_2) = obj_CB(x_1 / ϵ_x_p, x_2 / ϵ_x_p, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α)
+#     @objective(model, Min, _obj_CB(x_1, x_2))
+#     optimize!(model)
+#     @assert is_solved_and_feasible(model)
+#     return objective_value(model), value(x_1) / ϵ_x_p, value(x_2) / ϵ_x_p
+# end
+# obj_opt, x_1_opt, x_2_opt = optimal_x_func(BP.μ_0, BP.μ_0_c, BP.ω_1, BP.ω_2, BP.δ, BP.γ, BP.x_T, BP.ν_1, BP.ν_2, BP.α, BP.ϵ_x, BP.ϵ_x_p, BP.ϵ_tol)
+# println("Find the minimum of $obj_opt at (x_1, x_2) = ($x_1_opt, $x_2_opt)")
 
 function optimal_x_ν_func(μ_0::Float64, μ_0_c::Float64, ω_1::Float64, ω_2::Float64, δ::Float64, γ::Float64, x_T::Float64, α::Float64, ϵ_x::Float64, ϵ_x_p::Float64, ϵ_tol::Float64)
     model = Model(Ipopt.Optimizer)
@@ -128,17 +128,17 @@ function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,
         obj_CB_para[TA] = TA_grid[TA_i]
 
         # slove CB's optimization problem for (x_1, x_2)
-        obj_opt, x_1_opt, x_2_opt = optimal_x_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["ν_1"], obj_CB_para["ν_2"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_x_p"], obj_CB_para["ϵ_tol"])
-        # obj_opt, x_1_opt, x_2_opt, ν_1_opt, ν_2_opt = optimal_x_ν_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_x_p"], obj_CB_para["ϵ_tol"])
+        # obj_opt, x_1_opt, x_2_opt = optimal_x_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["ν_1"], obj_CB_para["ν_2"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_x_p"], obj_CB_para["ϵ_tol"])
+        obj_opt, x_1_opt, x_2_opt, ν_1_opt, ν_2_opt = optimal_x_ν_func(obj_CB_para["μ_0"], obj_CB_para["μ_0_c"], obj_CB_para["ω_1"], obj_CB_para["ω_2"], obj_CB_para["δ"], obj_CB_para["γ"], obj_CB_para["x_T"], obj_CB_para["α"], obj_CB_para["ϵ_x"], obj_CB_para["ϵ_x_p"], obj_CB_para["ϵ_tol"])
 
         # save results
-        @inbounds res[TA_i, 1] = ν_1 
-        @inbounds res[TA_i, 2] = ν_2
-        # @inbounds res[TA_i, 1] = ν_1_opt
-        # @inbounds res[TA_i, 2] = ν_2_opt
-        @inbounds res[TA_i, 3] = obj_opt
-        @inbounds res[TA_i, 4] = x_1_opt
-        @inbounds res[TA_i, 5] = x_2_opt
+        # @inbounds res[TA_i, 1] = ν_1 
+        # @inbounds res[TA_i, 2] = ν_2
+        @inbounds res[TA_i, 1] = obj_opt
+        @inbounds res[TA_i, 2] = x_1_opt
+        @inbounds res[TA_i, 3] = x_2_opt
+        @inbounds res[TA_i, 4] = ν_1_opt
+        @inbounds res[TA_i, 5] = ν_2_opt
         @inbounds res[TA_i, 6] = μ_1(x_1_opt, x_2_opt, obj_CB_para["μ_0"])
         @inbounds res[TA_i, 7] = μ_2(x_1_opt, x_2_opt, obj_CB_para["μ_0"])
         @inbounds res[TA_i, 8] = 1.0 - obj_CB_para["δ"] * c(x_1_opt, x_2_opt, obj_CB_para["μ_0"])
@@ -152,24 +152,35 @@ function optimal_flexibility_func!(BP::Benchmark_Parameters, res::Array{Float64,
     return nothing
 end
 
-#==============================#
-# benchmark result - ν and μ_0 #
-#==============================#
-μ_0_grid = collect(0.01:0.01:0.99)
+#========================#
+# benchmark result - μ_0 #
+#========================#
+μ_0_grid = collect(0.001:0.0005:0.999)
 μ_0_size = length(μ_0_grid)
-res = zeros(μ_0_size, 8)
-optimal_flexibility_func!(BP, res, "μ_0", μ_0_size, μ_0_grid)
-ν_1_min = res[:, 4]
-ν_2_min = res[:, 5]
+μ_0_res = zeros(μ_0_size, 8)
+optimal_flexibility_func!(BP, μ_0_res, "μ_0", μ_0_size, μ_0_grid)
+# μ_0_res = round.(μ_0_res, digits=3)
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0$")
-# scatterlines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-# scatterlines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
-lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
-lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-# axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
+ax = Axis(fig[1, 1], xlabel=L"HH prior $\mu_0$")
+lines!(ax, μ_0_grid, μ_0_res[:,2], label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, μ_0_grid, μ_0_res[:,3], label=L"$x_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
+fig
+
+# save figures
+filename = "fig_optimal_x_μ_0" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_x_μ_0" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"HH prior $\mu_0$")
+lines!(ax, μ_0_grid, μ_0_res[:,4], label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, μ_0_grid, μ_0_res[:,5], label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
 fig
 
 # save figures
@@ -178,51 +189,35 @@ save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_μ_0" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
-# minimizer and minimum
-x_1_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 4] for μ_0_i = 1:μ_0_size]
-x_2_min = [res[μ_0_i, res_obj_min_ind[μ_0_i][2], res_obj_min_ind[μ_0_i][3], 5] for μ_0_i = 1:μ_0_size]
+#==========================#
+# benchmark result - μ_0_c #
+#==========================#
+μ_0_c_grid = collect(0.001:0.0005:0.999)
+μ_0_c_size = length(μ_0_c_grid)
+μ_0_c_res = zeros(μ_0_c_size, 8)
+optimal_flexibility_func!(BP, μ_0_c_res, "μ_0_c", μ_0_c_size, μ_0_c_grid)
+# μ_0_c_res = round.(μ_0_c_res, digits=3)
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0$")
-scatterlines!(ax, μ_0_grid, x_1_min, label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, μ_0_grid, x_2_min, label=L"$x_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
-# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
-# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:ct, nbanks=1, patchsize=(70, 30))
+ax = Axis(fig[1, 1], xlabel=L"CB prior $\mu^c_0$")
+lines!(ax, μ_0_c_grid, μ_0_c_res[:,2], label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, μ_0_c_grid, μ_0_c_res[:,3], label=L"$x_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
 fig
 
 # save figures
-filename = "fig_optimal_ν_μ_0_x" * ".pdf"
+filename = "fig_optimal_x_μ_0_c" * ".pdf"
 save(PATH_FIG_γ * FL * filename, fig)
-filename = "fig_optimal_ν_μ_0_x" * ".png"
+filename = "fig_optimal_x_μ_0_c" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
-
-#================================#
-# benchmark result - ν and μ_0_c #
-#================================#
-μ_0_c_grid = collect(0.05:0.05:0.95)
-μ_0_c_size = length(μ_0_c_grid)
-ν_1_grid = collect(0.05:0.025:1.65)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.05:0.025:1.65)
-ν_2_size = length(ν_2_grid)
-res = zeros(μ_0_c_size, ν_1_size, ν_2_size, 8)
-optimal_flexibility_func!(BP, res, "μ_0_c", μ_0_c_size, μ_0_c_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
-
-# minimizer and minimum
-res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
-ν_1_min = [res[μ_0_c_i, res_obj_min_ind[μ_0_c_i][2], res_obj_min_ind[μ_0_c_i][3], 1] for μ_0_c_i = 1:μ_0_c_size]
-ν_2_min = [res[μ_0_c_i, res_obj_min_ind[μ_0_c_i][2], res_obj_min_ind[μ_0_c_i][3], 2] for μ_0_c_i = 1:μ_0_c_size]
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\mu_0^c$", ylabel=L"$\nu$")
-scatterlines!(ax, μ_0_c_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, μ_0_c_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
-# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
-# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:ct, nbanks=1, patchsize=(70, 30))
+ax = Axis(fig[1, 1], xlabel=L"CB prior $\mu^c_0$")
+lines!(ax, μ_0_c_grid, μ_0_c_res[:,4], label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, μ_0_c_grid, μ_0_c_res[:,5], label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
 fig
 
 # save figures
@@ -231,31 +226,35 @@ save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_μ_0_c" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
-#==============================#
-# benchmark result - ν and ω_1 #
-#==============================#
-ω_1_grid = collect(0.5:0.05:1.5)
+#========================#
+# benchmark result - ω_1 #
+#========================#
+ω_1_grid = collect(0.5:0.0005:1.5)
 ω_1_size = length(ω_1_grid)
-ν_1_grid = collect(0.35:0.005:0.65)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.35:0.005:0.65)
-ν_2_size = length(ν_2_grid)
-res = zeros(ω_1_size, ν_1_size, ν_2_size, 8)
-optimal_flexibility_func!(BP, res, "ω_1", ω_1_size, ω_1_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
-
-# minimizer and minimum
-res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
-ν_1_min = [res[ω_1_i, res_obj_min_ind[ω_1_i][2], res_obj_min_ind[ω_1_i][3], 1] for ω_1_i = 1:ω_1_size]
-ν_2_min = [res[ω_1_i, res_obj_min_ind[ω_1_i][2], res_obj_min_ind[ω_1_i][3], 2] for ω_1_i = 1:ω_1_size]
+ω_1_res = zeros(ω_1_size, 8)
+optimal_flexibility_func!(BP, ω_1_res, "ω_1", ω_1_size, ω_1_grid)
+# ω_1_res = round.(ω_1_res, digits=3)
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\omega_1$", ylabel=L"$\nu$")
-scatterlines!(ax, ω_1_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, ω_1_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
-# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
-# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:rb, nbanks=1, patchsize=(70, 30))
+ax = Axis(fig[1, 1], xlabel=L"Unemployment shock $\omega_1$")
+lines!(ax, ω_1_grid, ω_1_res[:,2], label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, ω_1_grid, ω_1_res[:,3], label=L"$x_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
+fig
+
+# save figures
+filename = "fig_optimal_x_ω_1" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_x_ω_1" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"Unemployment shock $\omega_1$")
+lines!(ax, ω_1_grid, ω_1_res[:,4], label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, ω_1_grid, ω_1_res[:,5], label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:lt, nbanks=2, patchsize=(40, 20))
 fig
 
 # save figures
@@ -264,31 +263,35 @@ save(PATH_FIG_γ * FL * filename, fig)
 filename = "fig_optimal_ν_ω_1" * ".png"
 save(PATH_FIG_γ * FL * filename, fig)
 
-#==============================#
-# benchmark result - ν and ω_2 #
-#==============================#
-ω_2_grid = collect(-1.5:0.05:-0.5)
+#========================#
+# benchmark result - ω_2 #
+#========================#
+ω_2_grid = collect(-1.5:0.0005:-0.5)
 ω_2_size = length(ω_2_grid)
-ν_1_grid = collect(0.35:0.005:0.65)
-ν_1_size = length(ν_1_grid)
-ν_2_grid = collect(0.35:0.005:0.65)
-ν_2_size = length(ν_2_grid)
-res = zeros(ω_2_size, ν_1_size, ν_2_size, 8)
-optimal_flexibility_func!(BP, res, "ω_2", ω_2_size, ω_2_grid, ν_1_size, ν_1_grid, ν_2_size, ν_2_grid)
-
-# minimizer and minimum
-res_obj_min_ind = argmin(res[:, :, :, 3], dims=(2, 3))
-ν_1_min = [res[ω_2_i, res_obj_min_ind[ω_2_i][2], res_obj_min_ind[ω_2_i][3], 1] for ω_2_i = 1:ω_2_size]
-ν_2_min = [res[ω_2_i, res_obj_min_ind[ω_2_i][2], res_obj_min_ind[ω_2_i][3], 2] for ω_2_i = 1:ω_2_size]
+ω_2_res = zeros(ω_2_size, 8)
+optimal_flexibility_func!(BP, ω_2_res, "ω_2", ω_2_size, ω_2_grid)
+# ω_2_res = round.(ω_2_res, digits=3)
 
 # line plot
 fig = Figure(fontsize=32, size=(600, 500))
-ax = Axis(fig[1, 1], xlabel=L"$\omega_2$", ylabel=L"$\nu$")
-scatterlines!(ax, ω_2_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5, markersize=20)
-scatterlines!(ax, ω_2_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dot, linewidth=5, markersize=20, marker=:xcross)
-# lines!(ax, μ_0_grid, ν_1_min, label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=5)
-# lines!(ax, μ_0_grid, ν_2_min, label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=5)
-axislegend(position=:rt, nbanks=1, patchsize=(70, 30))
+ax = Axis(fig[1, 1], xlabel=L"Unemployment shock $\omega_2$")
+lines!(ax, ω_2_grid, ω_2_res[:,2], label=L"$x_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, ω_2_grid, ω_2_res[:,3], label=L"$x_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
+fig
+
+# save figures
+filename = "fig_optimal_x_ω_2" * ".pdf"
+save(PATH_FIG_γ * FL * filename, fig)
+filename = "fig_optimal_x_ω_2" * ".png"
+save(PATH_FIG_γ * FL * filename, fig)
+
+# line plot
+fig = Figure(fontsize=32, size=(600, 500))
+ax = Axis(fig[1, 1], xlabel=L"Unemployment shock $\omega_2$")
+lines!(ax, ω_2_grid, ω_2_res[:,4], label=L"$\nu_1$", color=:blue, linestyle=nothing, linewidth=4)
+lines!(ax, ω_2_grid, ω_2_res[:,5], label=L"$\nu_2$", color=:red, linestyle=:dash, linewidth=4)
+axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
 fig
 
 # save figures
