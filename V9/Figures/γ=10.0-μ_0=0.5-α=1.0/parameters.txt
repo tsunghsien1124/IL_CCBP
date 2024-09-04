@@ -1,3 +1,5 @@
+The program name is 'CB_BP_v4.jl'.
+
 Benchmark_Parameters
   δ: Float64 0.5
   ω_1: Float64 1.0

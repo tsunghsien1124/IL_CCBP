@@ -69,6 +69,8 @@ end
 BP = Benchmark_Parameters()
 PATH_FIG_para = mkpath(PATH_FIG * FL * "γ=$(round(BP.γ,digits=1))-μ_0=$(round(BP.μ_0,digits=1))-α=$(round(BP.α,digits=1))")
 open(PATH_FIG_para * FL * "parameters.txt", "w") do io
+    println(io, "The program name is '", split(@__FILE__, FL)[end], "'.")
+    println(io, "")
     println(io, BP)
 end
 
