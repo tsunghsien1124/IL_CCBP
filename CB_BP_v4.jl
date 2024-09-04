@@ -8,6 +8,7 @@ using ProgressMeter
 using PrettyTables
 using GLMakie
 using CairoMakie
+using Dates
 
 #==============#
 # Housekeeping #
@@ -68,11 +69,6 @@ obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α) = obj_CB
 end
 BP = Benchmark_Parameters()
 PATH_FIG_para = mkpath(PATH_FIG * FL * "γ=$(round(BP.γ,digits=1))-μ_0=$(round(BP.μ_0,digits=1))-α=$(round(BP.α,digits=1))")
-open(PATH_FIG_para * FL * "parameters.txt", "w") do io
-    println(io, "The program name is '", split(@__FILE__, FL)[end], "'.")
-    println(io, "")
-    println(io, BP)
-end
 
 #==================#
 # benchmark result #
@@ -297,3 +293,14 @@ axislegend(position=:rt, nbanks=2, patchsize=(40, 20))
 fig
 save(PATH_FIG_para * FL * filename_ν * ".pdf", fig)
 save(PATH_FIG_para * FL * filename_ν * ".png", fig)
+
+#======================================#
+# output parameters and execution time #
+#======================================#
+open(PATH_FIG_para * FL * "output.txt", "w") do io
+    println(io, "Program name: ", split(@__FILE__, FL)[end])
+    println(io, "")
+    println(io, BP)
+    println(io, "Finished: $(Dates.now())")
+    println(io, "")
+end
