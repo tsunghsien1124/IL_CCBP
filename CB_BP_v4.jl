@@ -58,13 +58,13 @@ obj_CB(x_1, x_2, μ_0, μ_0_c, ω_1, ω_2, δ, γ, x_T, ν_1, ν_2, α) = obj_CB
     μ_0::Float64 = 0.5
     μ_0_diff::Float64 = 0.0
     μ_0_c::Float64 = 0.5 # μ_0 * (1.0 + μ_0_diff / 100)
-    γ::Float64 = 10.0
+    γ::Float64 = 1.0
     x_T::Float64 = 2.0
     ν_1::Float64 = 1.0
     ν_2::Float64 = 1.0
     α::Float64 = 0.0
     ϵ_x::Float64 = 1E-8
-    ϵ_x_p::Float64 = 1E-2
+    ϵ_x_p::Float64 = 1E-1
     ϵ_tol::Float64 = 1E-10
 end
 BP = Benchmark_Parameters()
