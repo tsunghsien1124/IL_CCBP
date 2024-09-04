@@ -11,10 +11,10 @@ Benchmark_Parameters
   x_T: Float64 2.0
   ν_1: Float64 1.0
   ν_2: Float64 1.0
-  α: Float64 1.0
+  α: Float64 0.0
   ϵ_x: Float64 1.0e-8
   ϵ_x_p: Float64 0.01
   ϵ_tol: Float64 1.0e-10
 
-Finished: 2024-09-04T18:45:42.576
+Finished: 2024-09-04T18:47:39.667
 
